@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
-import fs from 'fs';
-import path from 'path';
 
 export async function GET(request, { params }) {
   try {
@@ -20,11 +18,9 @@ export async function GET(request, { params }) {
       );
     }
 
-    const filePath = path.join(process.cwd(), 'public', 'uploads', note.filename);
-    
-    if (!fs.existsSync(filePath)) {
+    if (!note.fileUrl) {
       return NextResponse.json(
-        { message: 'File not found' },
+        { message: 'File URL not found' },
         { status: 404 }
       );
     }
@@ -48,15 +44,9 @@ export async function GET(request, { params }) {
       userAgent: request.headers.get('user-agent') || 'Unknown',
       ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
     });
-    const fileBuffer = fs.readFileSync(filePath);
-    const mimeType = note.mimeType || 'application/octet-stream';
-    
-    return new NextResponse(fileBuffer, {
-      headers: {
-        'Content-Type': mimeType,
-        'Content-Disposition': `attachment; filename="${note.filename}"`,
-      },
-    });
+
+    // Redirect to Cloudinary URL for direct download
+    return NextResponse.redirect(note.fileUrl);
   } catch (error) {
     console.error('Download error:', error);
     return NextResponse.json(

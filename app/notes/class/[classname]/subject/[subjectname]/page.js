@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Download, FileText, ArrowLeft, Clock, Search } from 'lucide-react';
+import { Download, FileText, ArrowLeft, Clock, Search, ExternalLink } from 'lucide-react';
 
 export default function SubjectNotes() {
   const params = useParams();
@@ -36,21 +36,17 @@ export default function SubjectNotes() {
     }
   };
 
-  const handleDownload = async (noteId, filename) => {
+  const handleDownload = async (noteId, title) => {
     try {
-      const response = await fetch(`/api/notes/download/${noteId}`);
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      // This will redirect to Cloudinary URL
+      window.open(`/api/notes/download/${noteId}`, '_blank');
     } catch (error) {
       console.error('Error downloading file:', error);
     }
+  };
+
+  const handlePreview = (fileUrl) => {
+    window.open(fileUrl, '_blank');
   };
 
   const filteredNotes = notes.filter(note =>
@@ -130,7 +126,7 @@ export default function SubjectNotes() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
             />
-            <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
           </div>
         </div>
 
@@ -167,11 +163,11 @@ export default function SubjectNotes() {
                         <div className="flex items-center space-x-2">
                           <span className="text-3xl transform group-hover:scale-110 transition-transform duration-300">{getFileTypeIcon(note.fileType)}</span>
                           <span className={`text-xs px-2 py-1 rounded-full font-medium ${getFileTypeColor(note.fileType)}`}>
-                            {note.fileType?.split('/')[1]?.toUpperCase() || 'FILE'}
+                            {note.format?.toUpperCase() || note.fileType?.split('/')[1]?.toUpperCase() || 'FILE'}
                           </span>
                         </div>
                         <div className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded-full">
-                          {(note.size / 1024 / 1024).toFixed(1)} MB
+                          {note.size ? (note.size / 1024 / 1024).toFixed(1) + ' MB' : 'N/A'}
                         </div>
                       </div>
 
@@ -186,13 +182,25 @@ export default function SubjectNotes() {
                         <span>{new Date(note.createdAt).toLocaleDateString()}</span>
                       </div>
 
-                      <button
-                        onClick={() => handleDownload(note._id, note.filename)}
-                        className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-300 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg transform hover:scale-105"
-                      >
-                        <Download className="h-4 w-4" />
-                        <span>Download</span>
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleDownload(note._id, note.title)}
+                          className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-300 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg transform hover:scale-105"
+                        >
+                          <Download className="h-4 w-4" />
+                          <span>Download</span>
+                        </button>
+                        
+                        {note.fileUrl && (
+                          <button
+                            onClick={() => handlePreview(note.fileUrl)}
+                            className="bg-gray-100 text-gray-700 py-3 px-4 rounded-lg font-medium hover:bg-gray-200 transition-all duration-300 flex items-center justify-center"
+                            title="Preview"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
