@@ -24,6 +24,7 @@ export default function AdminDashboard() {
   const [newSubjectName, setNewSubjectName] = useState('');
   const [uploadForm, setUploadForm] = useState({
     title: '',
+    class: '',
     subject: '',
     topic: '',
     description: '',
@@ -57,10 +58,22 @@ export default function AdminDashboard() {
       setNotes(notesData);
 
       // Group notes by subject and calculate stats
-      const subjectData = notesData.reduce((acc, note) => {
+      const classData = notesData.reduce((acc, note) => {
+        const className = note.class || 'General';
         const subject = note.subject;
-        if (!acc[subject]) {
-          acc[subject] = {
+        
+        if (!acc[className]) {
+          acc[className] = {
+            name: className,
+            subjects: {},
+            noteCount: 0,
+            latestNote: note.createdAt,
+            totalSize: 0
+          };
+        }
+
+        if (!acc[className].subjects[subject]) {
+          acc[className].subjects[subject] = {
             name: subject,
             noteCount: 0,
             topics: new Set(),
@@ -69,27 +82,38 @@ export default function AdminDashboard() {
             notes: []
           };
         }
-        acc[subject].noteCount++;
-        acc[subject].topics.add(note.topic);
-        acc[subject].totalSize += note.size || 0;
-        acc[subject].notes.push(note);
 
-        if (new Date(note.createdAt) > new Date(acc[subject].latestNote)) {
-          acc[subject].latestNote = note.createdAt;
+        acc[className].subjects[subject].noteCount++;
+        acc[className].subjects[subject].topics.add(note.topic);
+        acc[className].subjects[subject].totalSize += note.size || 0;
+        acc[className].subjects[subject].notes.push(note);
+        acc[className].noteCount++;
+        acc[className].totalSize += note.size || 0;
+
+        if (new Date(note.createdAt) > new Date(acc[className].latestNote)) {
+          acc[className].latestNote = note.createdAt;
+        }
+        if (new Date(note.createdAt) > new Date(acc[className].subjects[subject].latestNote)) {
+          acc[className].subjects[subject].latestNote = note.createdAt;
         }
 
         return acc;
       }, {});
 
-      const subjectsArray = Object.values(subjectData).map(subject => ({
-        ...subject,
-        topicCount: subject.topics.size,
-        topics: undefined
+      const classesArray = Object.values(classData).map(classItem => ({
+        ...classItem,
+        subjectCount: Object.keys(classItem.subjects).length,
+        subjects: Object.values(classItem.subjects).map(subject => ({
+          ...subject,
+          topicCount: subject.topics.size,
+          topics: undefined
+        }))
       }));
 
-      setSubjects(subjectsArray);
+      setSubjects(classesArray);
 
       // Calculate overall stats
+      const classes = new Set(notesData.map(note => note.class || 'General'));
       const subjects = new Set(notesData.map(note => note.subject));
       const topics = new Set(notesData.map(note => note.topic));
       const recentDate = new Date();
@@ -98,6 +122,7 @@ export default function AdminDashboard() {
 
       setStats({
         totalNotes: notesData.length,
+        totalClasses: classes.size,
         totalSubjects: subjects.size,
         totalTopics: topics.size,
         recentUploads: recentUploads.length,
@@ -167,6 +192,7 @@ export default function AdminDashboard() {
 
     const formData = new FormData();
     formData.append('title', uploadForm.title);
+    formData.append('class', uploadForm.class);
     formData.append('subject', uploadForm.subject);
     formData.append('topic', uploadForm.topic);
     formData.append('description', uploadForm.description);
@@ -182,6 +208,7 @@ export default function AdminDashboard() {
         setShowUploadModal(false);
         setUploadForm({
           title: '',
+          class: '',
           subject: '',
           topic: '',
           description: '',
@@ -263,6 +290,7 @@ export default function AdminDashboard() {
     if (newSubjectName.trim()) {
       setUploadForm({
         ...uploadForm,
+        class: '',
         subject: newSubjectName.trim()
       });
       setShowNewSubjectModal(false);
@@ -279,6 +307,7 @@ export default function AdminDashboard() {
   const handleAddNoteToSubject = (subjectName) => {
     setUploadForm({
       ...uploadForm,
+      class: '',
       subject: subjectName
     });
     setShowUploadModal(true);
@@ -372,6 +401,18 @@ export default function AdminDashboard() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Classes</p>
+                <p className="text-3xl font-bold text-gray-900">{stats.totalClasses || 0}</p>
+              </div>
+              <div className="bg-purple-100 p-3 rounded-full">
+                <Users className="h-6 w-6 text-purple-600" />
+              </div>
+            </div>
+          </div>
+
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -528,12 +569,12 @@ export default function AdminDashboard() {
             {activeTab === 'subjects' && (
               <div>
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900">Subject Management</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">Class & Subject Management</h2>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
                       type="text"
-                      placeholder="Search subjects..."
+                      placeholder="Search classes..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
@@ -545,62 +586,62 @@ export default function AdminDashboard() {
                   <div className="text-center py-16">
                     <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      {searchTerm ? 'No subjects found' : 'No subjects yet'}
+                      {searchTerm ? 'No classes found' : 'No classes yet'}
                     </h3>
                     <p className="text-gray-600 mb-6">
-                      {searchTerm ? 'Try adjusting your search terms' : 'Create your first subject to start adding educational materials'}
+                      {searchTerm ? 'Try adjusting your search terms' : 'Upload materials to start organizing by classes'}
                     </p>
                     {!searchTerm && (
                       <button
                         onClick={() => setShowNewSubjectModal(true)}
                         className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
                       >
-                        Create First Subject
+                        Add First Material
                       </button>
                     )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredSubjects.map((subject) => (
-                      <div key={subject.name} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group">
+                    {filteredSubjects.map((classItem) => (
+                      <div key={classItem.name} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group">
                         <div className="text-center">
-                          <div className="text-4xl mb-4">{getSubjectIcon(subject.name)}</div>
+                          <div className="text-4xl mb-4">🎓</div>
                           <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-blue-600 transition-colors">
-                            {subject.name}
+                            Class {classItem.name}
                           </h3>
 
                           <div className="space-y-3 mb-6">
                             <div className="flex items-center justify-center space-x-4 text-sm text-gray-600">
                               <div className="flex items-center space-x-1">
-                                <FileText className="h-4 w-4" />
-                                <span>{subject.noteCount} Notes</span>
+                                <BookOpen className="h-4 w-4" />
+                                <span>{classItem.subjectCount} Subjects</span>
                               </div>
                               <div className="flex items-center space-x-1">
-                                <BookOpen className="h-4 w-4" />
-                                <span>{subject.topicCount} Topics</span>
+                                <FileText className="h-4 w-4" />
+                                <span>{classItem.noteCount} Notes</span>
                               </div>
                             </div>
 
                             <div className="text-xs text-gray-500">
-                              Updated {new Date(subject.latestNote).toLocaleDateString()}
+                              Updated {new Date(classItem.latestNote).toLocaleDateString()}
                             </div>
 
                             <div className="text-xs text-gray-500">
-                              Total Size: {(subject.totalSize / 1024 / 1024).toFixed(1)} MB
+                              Total Size: {(classItem.totalSize / 1024 / 1024).toFixed(1)} MB
                             </div>
                           </div>
 
                           <div className="space-y-3">
                             <button
-                              onClick={() => handleSubjectClick(subject)}
+                              onClick={() => handleSubjectClick(classItem)}
                               className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
                             >
                               <Edit3 className="h-4 w-4" />
-                              <span>Manage Notes</span>
+                              <span>Manage Subjects</span>
                             </button>
 
                             <button
-                              onClick={() => handleAddNoteToSubject(subject.name)}
+                              onClick={() => setShowUploadModal(true)}
                               className="w-full bg-green-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
                             >
                               <Plus className="h-4 w-4" />
@@ -608,7 +649,7 @@ export default function AdminDashboard() {
                             </button>
 
                             <Link
-                              href={`/notes/${encodeURIComponent(subject.name)}`}
+                              href={`/notes/class/${encodeURIComponent(classItem.name)}`}
                               target="_blank"
                               className="w-full inline-flex items-center justify-center text-blue-600 font-medium hover:text-blue-700 transition-colors bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-lg border border-blue-200 hover:border-blue-300"
                             >
@@ -639,14 +680,14 @@ export default function AdminDashboard() {
                     </button>
                     <div>
                       <h2 className="text-2xl font-bold text-gray-900 flex items-center space-x-3">
-                        <span className="text-3xl">{getSubjectIcon(selectedSubject.name)}</span>
-                        <span>{selectedSubject.name}</span>
+                        <span className="text-3xl">🎓</span>
+                        <span>Class {selectedSubject.name}</span>
                       </h2>
-                      <p className="text-gray-600">{selectedSubject.noteCount} notes across {selectedSubject.topicCount} topics</p>
+                      <p className="text-gray-600">{selectedSubject.noteCount} notes across {selectedSubject.subjectCount} subjects</p>
                     </div>
                   </div>
                   <button
-                    onClick={() => handleAddNoteToSubject(selectedSubject.name)}
+                    onClick={() => setShowUploadModal(true)}
                     className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center space-x-2"
                   >
                     <Plus className="h-5 w-5" />
@@ -654,57 +695,69 @@ export default function AdminDashboard() {
                   </button>
                 </div>
 
-                {selectedSubject.notes.length === 0 ? (
+                {selectedSubject.subjects.length === 0 ? (
                   <div className="text-center py-16">
                     <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No notes in this subject yet</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No subjects in this class yet</h3>
                     <p className="text-gray-600 mb-6">Start by adding your first educational material</p>
                     <button
-                      onClick={() => handleAddNoteToSubject(selectedSubject.name)}
+                      onClick={() => setShowUploadModal(true)}
                       className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
                     >
-                      Add First Note
+                      Add First Material
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {selectedSubject.notes.map((note) => (
-                      <div key={note._id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-2xl">{getFileTypeIcon(note.fileType)}</span>
-                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${getFileTypeColor(note.fileType)}`}>
-                              {note.fileType?.split('/')[1]?.toUpperCase() || 'FILE'}
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => handleDelete(note._id)}
-                            className="text-red-600 hover:text-red-800 p-1 rounded transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-
-                        <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{note.title}</h3>
-
-                        <div className="space-y-1 mb-4">
-                          <div className="flex items-center text-sm text-gray-600">
-                            <span className="font-medium">Topic:</span>
-                            <span className="ml-2">{note.topic}</span>
-                          </div>
-                          <div className="flex items-center text-sm text-gray-600">
-                            <span className="font-medium">Downloads:</span>
-                            <span className="ml-2 text-green-600 font-semibold">{note.downloadCount || 0}</span>
+                  <div className="space-y-8">
+                    {selectedSubject.subjects.map((subject) => (
+                      <div key={subject.name} className="bg-white border border-gray-200 rounded-xl p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
+                            <span className="text-2xl">{getSubjectIcon(subject.name)}</span>
+                            <span>{subject.name}</span>
+                          </h3>
+                          <div className="text-sm text-gray-600">
+                            {subject.noteCount} notes • {subject.topicCount} topics
                           </div>
                         </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {subject.notes.map((note) => (
+                            <div key={note._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-gray-50">
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xl">{getFileTypeIcon(note.fileType)}</span>
+                                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${getFileTypeColor(note.fileType)}`}>
+                                    {note.fileType?.split('/')[1]?.toUpperCase() || 'FILE'}
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => handleDelete(note._id)}
+                                  className="text-red-600 hover:text-red-800 p-1 rounded transition-colors"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </div>
 
-                        {note.description && (
-                          <p className="text-sm text-gray-600 mb-4 line-clamp-3">{note.description}</p>
-                        )}
+                              <h4 className="font-semibold text-gray-900 mb-2 text-sm line-clamp-2">{note.title}</h4>
 
-                        <div className="flex items-center justify-between text-xs text-gray-500">
-                          <span>{new Date(note.createdAt).toLocaleDateString()}</span>
-                          <span>{(note.size / 1024 / 1024).toFixed(1)} MB</span>
+                              <div className="space-y-1 mb-3">
+                                <div className="flex items-center text-xs text-gray-600">
+                                  <span className="font-medium">Topic:</span>
+                                  <span className="ml-2">{note.topic}</span>
+                                </div>
+                                <div className="flex items-center text-xs text-gray-600">
+                                  <span className="font-medium">Downloads:</span>
+                                  <span className="ml-2 text-green-600 font-semibold">{note.downloadCount || 0}</span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between text-xs text-gray-500">
+                                <span>{new Date(note.createdAt).toLocaleDateString()}</span>
+                                <span>{(note.size / 1024 / 1024).toFixed(1)} MB</span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     ))}
@@ -1034,13 +1087,36 @@ export default function AdminDashboard() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Subject
+                  Class *
+                </label>
+                <select
+                  required
+                  value={uploadForm.class}
+                  onChange={(e) => setUploadForm({ ...uploadForm, class: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
+                >
+                  <option value="">Select a class</option>
+                  <option value="6th">Class 6th</option>
+                  <option value="7th">Class 7th</option>
+                  <option value="8th">Class 8th</option>
+                  <option value="9th">Class 9th</option>
+                  <option value="10th">Class 10th</option>
+                  <option value="11th">Class 11th</option>
+                  <option value="12th">Class 12th</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Subject *
                 </label>
                 <input
                   type="text"
+                  required
                   value={uploadForm.subject}
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600"
+                  onChange={(e) => setUploadForm({ ...uploadForm, subject: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-colors"
+                  placeholder="e.g., Mathematics, Physics, Chemistry"
                 />
               </div>
 

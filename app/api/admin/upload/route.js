@@ -18,11 +18,12 @@ export async function POST(request) {
     const formData = await request.formData();
     const file = formData.get('file');
     const title = formData.get('title');
+    const className = formData.get('class');
     const subject = formData.get('subject');
     const topic = formData.get('topic');
     const description = formData.get('description');
 
-    if (!file || !title || !subject || !topic) {
+    if (!file || !title || !className || !subject || !topic) {
       return NextResponse.json(
         { message: 'All required fields must be provided' },
         { status: 400 }
@@ -51,6 +52,7 @@ export async function POST(request) {
     
     const note = {
       title,
+      class: className,
       subject,
       topic,
       description,
