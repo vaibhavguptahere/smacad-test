@@ -286,6 +286,7 @@ export default function Notes() {
             ))}
           </div>
         )}
+        
         {/* Stats Section */}
         {classes.length > 0 && (
           <div className="mt-20 bg-white rounded-3xl shadow-xl p-10 border border-gray-100 relative overflow-hidden">
