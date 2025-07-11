@@ -1,39 +1,40 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Download, FileText, ArrowLeft, Clock, User } from 'lucide-react';
+import { Download, FileText, ArrowLeft, Clock, Search } from 'lucide-react';
 
 export default function SubjectNotes() {
   const params = useParams();
-  const router = useRouter();
-  const subject = decodeURIComponent(params.subject);
+  const className = decodeURIComponent(params.className);
+  const subjectName = decodeURIComponent(params.subjectName);
 
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const fetchSubjectNotes = async () => {
-      try {
-        const response = await fetch('/api/notes');
-        const data = await response.json();
-        const allNotes = data.notes || [];
-
-        // Filter notes for this subject
-        const subjectNotes = allNotes.filter(note => note.subject === subject);
-        setNotes(subjectNotes);
-      } catch (error) {
-        console.error('Error fetching subject notes:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchSubjectNotes();
-  }, [subject]);
+  }, [className, subjectName]);
 
+  const fetchSubjectNotes = async () => {
+    try {
+      const response = await fetch('/api/notes');
+      const data = await response.json();
+      const allNotes = data.notes || [];
+
+      // Filter notes for this class and subject
+      const subjectNotes = allNotes.filter(note => 
+        (note.class || 'General') === className && note.subject === subjectName
+      );
+      setNotes(subjectNotes);
+    } catch (error) {
+      console.error('Error fetching subject notes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDownload = async (noteId, filename) => {
     try {
@@ -100,16 +101,18 @@ export default function SubjectNotes() {
         {/* Header */}
         <div className="mb-8">
           <Link
-            href="/notes"
+            href={`/notes/class/${encodeURIComponent(className)}`}
             className="inline-flex items-center text-blue-600 hover:text-blue-700 mb-4 transition-colors"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Subjects
+            Back to Class {className} Subjects
           </Link>
 
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">{subject}</h1>
+              <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                Class {className} - {subjectName}
+              </h1>
               <p className="text-gray-600">
                 {notes.length} study materials available across {Object.keys(groupedNotes).length} topics
               </p>
