@@ -8,7 +8,7 @@ import { BookOpen, ArrowLeft, Search, Filter, Calendar, TrendingUp, FileText, Ar
 export default function ClassSubjects() {
   const params = useParams();
   const router = useRouter();
-  const className = decodeURIComponent(params.className);
+  const className = params.classname ? decodeURIComponent(params.classname) : '';
 
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,7 +16,9 @@ export default function ClassSubjects() {
   const [sortBy, setSortBy] = useState('name');
 
   useEffect(() => {
-    fetchClassSubjects();
+    if (className) {
+      fetchClassSubjects();
+    }
   }, [className]);
 
   const fetchClassSubjects = async () => {
@@ -133,6 +135,19 @@ export default function ClassSubjects() {
         <div className="max-w-7xl mx-auto text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading subjects...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!className) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 pt-24 pb-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Class Not Found</h1>
+          <Link href="/notes" className="text-blue-600 hover:text-blue-700">
+            Back to Classes
+          </Link>
         </div>
       </div>
     );

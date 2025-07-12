@@ -7,15 +7,17 @@ import { Download, FileText, ArrowLeft, Clock, Search, ExternalLink } from 'luci
 
 export default function SubjectNotes() {
   const params = useParams();
-  const className = decodeURIComponent(params.className);
-  const subjectName = decodeURIComponent(params.subjectname);
+  const className = params.classname ? decodeURIComponent(params.classname) : '';
+  const subjectName = params.subjectname ? decodeURIComponent(params.subjectname) : '';
 
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    fetchSubjectNotes();
+    if (className && subjectName) {
+      fetchSubjectNotes();
+    }
   }, [className, subjectName]);
 
   const fetchSubjectNotes = async () => {
@@ -86,6 +88,19 @@ export default function SubjectNotes() {
         <div className="max-w-7xl mx-auto text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading notes...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!className || !subjectName) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white pt-24 pb-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Page Not Found</h1>
+          <Link href="/notes" className="text-blue-600 hover:text-blue-700">
+            Back to Classes
+          </Link>
         </div>
       </div>
     );

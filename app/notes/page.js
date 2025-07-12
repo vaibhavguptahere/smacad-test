@@ -213,7 +213,7 @@ export default function Notes() {
             {filteredAndSortedClasses.map((classItem, index) => (
               <Link
                 key={classItem.name}
-                href={`/notes/class/${encodeURIComponent(classItem.name)}`}
+                href={`/notes/class/${encodeURIComponent(classItem.name.toString())}`}
                 className="group"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
