@@ -8,7 +8,7 @@ import { Download, FileText, ArrowLeft, Clock, Search, ExternalLink } from 'luci
 export default function SubjectNotes() {
   const params = useParams();
   const className = decodeURIComponent(params.className);
-  const subjectName = decodeURIComponent(params.subjectName);
+  const subjectName = decodeURIComponent(params.subjectname);
 
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
