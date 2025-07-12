@@ -6,6 +6,13 @@ export async function GET(request, { params }) {
   try {
     const { id } = params;
     
+    if (!id) {
+      return NextResponse.json(
+        { message: 'Note ID is required' },
+        { status: 400 }
+      );
+    }
+
     const client = await clientPromise;
     const db = client.db('sm-academy');
     
@@ -45,8 +52,33 @@ export async function GET(request, { params }) {
       ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
     });
 
-    // Redirect to Cloudinary URL for direct download
-    return NextResponse.redirect(note.fileUrl);
+    // Return the file URL with proper headers for download
+    try {
+      const fileResponse = await fetch(note.fileUrl);
+      
+      if (!fileResponse.ok) {
+        return NextResponse.json(
+          { message: 'File not accessible' },
+          { status: 404 }
+        );
+      }
+
+      const fileBuffer = await fileResponse.arrayBuffer();
+      const fileName = note.title.replace(/[^a-zA-Z0-9]/g, '_') + '.' + (note.format || 'pdf');
+      
+      return new NextResponse(fileBuffer, {
+        status: 200,
+        headers: {
+          'Content-Type': note.mimeType || 'application/octet-stream',
+          'Content-Disposition': `attachment; filename="${fileName}"`,
+          'Content-Length': fileBuffer.byteLength.toString(),
+        },
+      });
+    } catch (fetchError) {
+      console.error('Error fetching file from Cloudinary:', fetchError);
+      // Fallback to redirect if fetch fails
+      return NextResponse.redirect(note.fileUrl);
+    }
   } catch (error) {
     console.error('Download error:', error);
     return NextResponse.json(

@@ -40,10 +40,43 @@ export default function SubjectNotes() {
 
   const handleDownload = async (noteId, title) => {
     try {
-      // This will redirect to Cloudinary URL
-      window.open(`/api/notes/download/${noteId}`, '_blank');
+      const response = await fetch(`/api/notes/download/${noteId}`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Download failed');
+      }
+
+      // Get the file blob
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Get filename from response headers or use title
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = title.replace(/[^a-zA-Z0-9]/g, '_') + '.pdf';
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          filename = filenameMatch[1];
+        }
+      }
+      
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
     } catch (error) {
       console.error('Error downloading file:', error);
+      alert('Failed to download file. Please try again.');
     }
   };
 
