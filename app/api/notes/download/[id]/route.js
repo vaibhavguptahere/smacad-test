@@ -52,33 +52,25 @@ export async function GET(request, { params }) {
       ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
     });
 
-    // Return the file URL with proper headers for download
-    try {
-      const fileResponse = await fetch(note.fileUrl);
-      
-      if (!fileResponse.ok) {
-        return NextResponse.json(
-          { message: 'File not accessible' },
-          { status: 404 }
-        );
+    // For Cloudinary files, we'll redirect to the file URL with download parameters
+    // Cloudinary supports adding fl_attachment to force download
+    let downloadUrl = note.fileUrl;
+    
+    // Check if it's a Cloudinary URL and add download parameter
+    if (downloadUrl.includes('cloudinary.com')) {
+      // Add fl_attachment to force download
+      if (downloadUrl.includes('/upload/')) {
+        downloadUrl = downloadUrl.replace('/upload/', '/upload/fl_attachment/');
       }
-
-      const fileBuffer = await fileResponse.arrayBuffer();
-      const fileName = note.title.replace(/[^a-zA-Z0-9]/g, '_') + '.' + (note.format || 'pdf');
-      
-      return new NextResponse(fileBuffer, {
-        status: 200,
-        headers: {
-          'Content-Type': note.mimeType || 'application/octet-stream',
-          'Content-Disposition': `attachment; filename="${fileName}"`,
-          'Content-Length': fileBuffer.byteLength.toString(),
-        },
-      });
-    } catch (fetchError) {
-      console.error('Error fetching file from Cloudinary:', fetchError);
-      // Fallback to redirect if fetch fails
-      return NextResponse.redirect(note.fileUrl);
     }
+
+    // Return the download URL for client-side handling
+    return NextResponse.json({ 
+      downloadUrl: downloadUrl,
+      filename: note.title.replace(/[^a-zA-Z0-9]/g, '_') + '.' + (note.format || 'pdf'),
+      message: 'Download URL generated successfully'
+    });
+
   } catch (error) {
     console.error('Download error:', error);
     return NextResponse.json(

@@ -40,6 +40,13 @@ export default function SubjectNotes() {
 
   const handleDownload = async (noteId, title) => {
     try {
+      // Show loading state
+      const downloadButton = document.querySelector(`[data-note-id="${noteId}"]`);
+      if (downloadButton) {
+        downloadButton.disabled = true;
+        downloadButton.innerHTML = '<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white mx-auto"></div>';
+      }
+
       const response = await fetch(`/api/notes/download/${noteId}`);
       
       if (!response.ok) {
@@ -47,36 +54,29 @@ export default function SubjectNotes() {
         throw new Error(errorData.message || 'Download failed');
       }
 
-      // Get the file blob
-      const blob = await response.blob();
+      const data = await response.json();
       
-      // Create download link
-      const url = window.URL.createObjectURL(blob);
+      // Create download link using the provided URL
       const link = document.createElement('a');
-      link.href = url;
-      
-      // Get filename from response headers or use title
-      const contentDisposition = response.headers.get('content-disposition');
-      let filename = title.replace(/[^a-zA-Z0-9]/g, '_') + '.pdf';
-      
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-        if (filenameMatch) {
-          filename = filenameMatch[1];
-        }
-      }
-      
-      link.download = filename;
+      link.href = data.downloadUrl;
+      link.download = data.filename;
+      link.target = '_blank';
       document.body.appendChild(link);
       link.click();
       
       // Cleanup
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
       
     } catch (error) {
       console.error('Error downloading file:', error);
       alert('Failed to download file. Please try again.');
+    } finally {
+      // Reset button state
+      const downloadButton = document.querySelector(`[data-note-id="${noteId}"]`);
+      if (downloadButton) {
+        downloadButton.disabled = false;
+        downloadButton.innerHTML = '<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg><span>Download</span>';
+      }
     }
   };
 
@@ -232,6 +232,7 @@ export default function SubjectNotes() {
 
                       <div className="flex gap-2">
                         <button
+                          data-note-id={note._id}
                           onClick={() => handleDownload(note._id, note.title)}
                           className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-lg font-medium hover:from-blue-700 hover:to-blue-800 transition-all duration-300 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg transform hover:scale-105"
                         >

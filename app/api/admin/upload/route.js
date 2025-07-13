@@ -45,7 +45,12 @@ export async function POST(request) {
     const uploadToCloudinary = () =>
       new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
-          { folder: 'notes-uploads' },
+          { 
+            folder: 'notes-uploads',
+            resource_type: 'auto', // Automatically detect file type
+            use_filename: true,
+            unique_filename: false
+          },
           (error, result) => {
             if (error) reject(error);
             else resolve(result);
@@ -73,6 +78,7 @@ export async function POST(request) {
       fileType: file.type,
       mimeType: file.type,
       size: file.size,
+      downloadCount: 0, // Initialize download count
       createdAt: new Date(),
     };
 
